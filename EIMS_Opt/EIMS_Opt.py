@@ -119,14 +119,14 @@ class cla_Data_Tracking():
 
 class cla_Costs():
 
-    def __init__(self, obj_Datatracker):
+    def __init__(self, obj_Datatracker, price_grid = 0.19):
         self.PV_kWp = obj_Datatracker.PV_kWp
         self.Bat_kWh = obj_Datatracker.Bat_kWh
         self.PV_cost = 700 # €/kWp
         self.battery_cost = 200         # €/kWh
         self.Cost_Operation_Percent = 1 # % der Investmestkosten pro Jahr
         self.price_feed_in = 0.05  # €/kWh
-        self.price_grid = 0.19  # €/kWh 
+        self.price_grid = price_grid  # €/kWh 
         self.Life = 10 #Years
         self.Investment_costs = self.PV_kWp * self.PV_cost + self.Bat_kWh * self.battery_cost
         self.Operation_costs = self.Get_Operationcosts(obj_Datatracker)
@@ -220,7 +220,7 @@ class cla_Plotting():
 #%%
 class Model():
 
-    def Simulate(self,var_BGF, var_PV_kWP, var_battery_kWh,verbose = False):
+    def Simulate(self,var_BGF, var_PV_kWP, var_battery_kWh, price_grid = 0.19,verbose = False, plotting = False):
         Test_hourly = []
         obj_Gebäude = cla_Gebäude(var_BGF,np.genfromtxt(".\\Data\\ED_Wh_per_m2.csv"))
         obj_PV_Anlage = cla_PV_Anlage(var_PV_kWP,np.genfromtxt(".\\Data\\PV_1kWp.csv"))
@@ -228,7 +228,7 @@ class Model():
         obj_Datatracker = cla_Data_Tracking(arg_PV_Anlage = obj_PV_Anlage, arg_Gebäude = obj_Gebäude, arg_Battery = obj_Batterie)
         t0 = time.time() #Timekeeping
         for it_hour in range(8760):
-            #Rediuallast
+            #Residuallast
             var_ResLast = obj_PV_Anlage.PV_EK[it_hour] - obj_Gebäude.EV[it_hour]
             #Tracking des Direktverbrauches
             obj_Datatracker.PV_Direktverbrauch[it_hour] = min(obj_PV_Anlage.PV_EK[it_hour], obj_Gebäude.EV[it_hour])
@@ -273,11 +273,7 @@ class Model():
                             abs(obj_Datatracker.Batterieverluste[it_hour]) + abs(obj_Datatracker.Gebäudeverbrauch[it_hour])
 
             Test_hourly.append(flows_in_hour - flows_out_hour)
-        #print("PV_Erzeugung: ", round(obj_PV_Anlage.PV_EK.sum(),2), " kWh")  
-        #print("Gebäudeverbrauch: ", round(obj_Gebäude.EV.sum(),2), " kWh") 
-        #print("PV Direktverbrauch: ", round(obj_Datatracker.PV_Direktverbrauch.sum(),2), " kWh") 
-        #print("Batterieentladung: ", round(obj_Datatracker.Batterieentladung.sum(),2), " kWh")
-        #print("Netzeinspeisung: ", round(obj_Datatracker.Netzeinspeisung.sum(),2), " kWh")
+
         #Test ob die Energiebilanz stimmt
         obj_Datatracker.CleanData()
         flows_in = [obj_Datatracker.Netzbezug.sum(),obj_Datatracker.Batterieentladung.sum(), obj_Datatracker.PV_Erzeugung.sum()]
@@ -285,23 +281,17 @@ class Model():
                             obj_Datatracker.Batterieverluste.sum(),obj_Datatracker.Gebäudeverbrauch.sum()]
         Test = sum(flows_in) - sum(flows_out)
         if abs(Test) > 0.0000001:
-            pass
-            #raise ValueError("ENERGIEBILANZ STIMMT NICHT!")
-        t1 = time.time() #Timekeeping
-        #print("Done Simulating in ",round(t1-t0,3)," Seconds")      
-    
+            raise ValueError("ENERGIEBILANZ STIMMT NICHT!")
+
         # plot your results:
-        obj_Plotter = cla_Plotting(obj_Datatracker)
-        #obj_Plotter.Sankeyplot(obj_Datatracker) WiP
-        #obj_Plotter.Lineplot_Leistung(li_toPLot = ["Batterieverluste","Batterieeinspeisung","Batterieentladung"],str_toSave = "Bat_Leistungen")
-        #obj_Plotter.Lineplot_Leistung(li_toPLot = ["Batteriekapazität"],str_toSave = "Bat_Kapazität")
-        #obj_Plotter.Lineplot_Leistung(li_toPLot = ["PV_Direktverbrauch"],str_toSave = "PV_Direktverbrauch")
-        #print("Batterieeinspeisung: ", round(obj_Datatracker.Batterieeinspeisung.sum(),2), " kWh")
-        #print("Batterieverlust: ", round(obj_Datatracker.Batterieverluste.sum(),2), " kWh")
-        #print("Netzbezug: ", round(obj_Datatracker.Netzbezug.sum(),2), " kWh")
-        #obj_Plotter.Lineplot_Leistung(li_toPLot = ["Netzeinspeisung","Netzbezug"],str_toSave = "Netz_IO")
-        t2 = time.time() #Timekeeping
-        #print("Done Plotting in ",round(t2-t1,3)," Seconds")
+        if plotting == True:
+
+            obj_Plotter = cla_Plotting(obj_Datatracker)
+            obj_Plotter.Sankeyplot(obj_Datatracker) 
+            obj_Plotter.Lineplot_Leistung(li_toPLot = ["Batterieverluste","Batterieeinspeisung","Batterieentladung"],str_toSave = "Bat_Leistungen")
+            obj_Plotter.Lineplot_Leistung(li_toPLot = ["Batteriekapazität"],str_toSave = "Bat_Kapazität")
+            obj_Plotter.Lineplot_Leistung(li_toPLot = ["PV_Direktverbrauch"],str_toSave = "PV_Direktverbrauch")
+            obj_Plotter.Lineplot_Leistung(li_toPLot = ["Netzeinspeisung","Netzbezug"],str_toSave = "Netz_IO")
 
 
         # calc Primary Energy
@@ -311,7 +301,7 @@ class Model():
         obj_Gebäude.CO2_Gesamt = ((sum(obj_Datatracker.Netzbezug) * obj_Gebäude.CO2 - sum(obj_Datatracker.Netzeinspeisung) * obj_Gebäude.CO2) / 1000) / obj_Gebäude.BGF
 
         # calculate cost [€/life cycle]
-        obj_Costs = cla_Costs(obj_Datatracker)
+        obj_Costs = cla_Costs(obj_Datatracker,price_grid)
         #obj_Plotter.Break_Even_Plot(obj_Costs,str_toSave = "Cashflow")
         # investment cost [€/life cycle]
     
@@ -344,7 +334,7 @@ class Model():
 def main():
     #this should work
     model = Model()
-    result = model.Simulate(var_BGF=5000, var_PV_kWP=1, var_battery_kWh=1, verbose = False)
+    result = model.Simulate(var_BGF=1000, var_PV_kWP = 50, var_battery_kWh = 50, verbose = False, plotting = True)
     print(f"Gesamtkosten: {result['Gesamtkosten']:.2f} €")
     print(f"Investmentkosten: {result['Investmentkosten']:.2f} €")
     print(f"Operationskosten: {result['Operationskosten']:.2f}")
