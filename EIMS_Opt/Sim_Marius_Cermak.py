@@ -48,13 +48,12 @@ class cla_Batterie():
     def Entladen(self,arg_Reslast):
         #self.Leistung ist der Teil der anschließend von der Reslast abgezogen wird
         
-
-        if arg_Reslast > self.Leistung_MAX:
-            #Wenn ja wird gekappt
-            self.Verlust = self.Leistung_MAX * (1-self.Effizienz)
-            self.Leistung = self.Leistung_MAX * self.Effizienz 
+        var_ResLast_mit_Verlust = arg_Reslast + (arg_Reslast*(1-self.Effizienz))
+        if var_ResLast_mit_Verlust < self.Leistung_MAX and var_ResLast_mit_Verlust < self.Kapazität:
+            #Kann die Residuallast + Verlust gedeckt werden?
+            self.Verlust = arg_Reslast * (1-self.Effizienz)  
+            self.Leistung = arg_Reslast# - self.Verlust
         else:
-            #Wenn nein, g2g
             self.Verlust = arg_Reslast * (1-self.Effizienz) 
             self.Leistung = arg_Reslast 
 
@@ -71,7 +70,6 @@ class cla_Batterie():
         return arg_Reslast
     
     def Laden(self,arg_Reslast):
-
         if arg_Reslast > self.Leistung_MAX:
             #Wenn ja wird gekappt
             self.Verlust = self.Leistung_MAX * (1-self.Effizienz)
@@ -132,7 +130,6 @@ class cla_Costs():
         self.Life = 10 #Years
         self.Investment_costs = self.PV_kWp * self.PV_cost + self.Bat_kWh * self.battery_cost
         self.Operation_costs = self.Get_Operationcosts(obj_Datatracker)
-        self.cashflow = self.Get_Vergütung(obj_Datatracker)
         self.total_costs = self.Get_Costs()
 
 
@@ -143,8 +140,7 @@ class cla_Costs():
     def Get_Operationcosts(self, obj_Datatracker):
          return sum(obj_Datatracker.Netzbezug) * self.price_grid - sum(obj_Datatracker.Netzeinspeisung) * self.price_feed_in
 
-    def Get_Vergütung(self, obj_Datatracker):
-         return (sum(obj_Datatracker.Netzeinspeisung) * self.price_feed_in + sum(obj_Datatracker.PV_Direktverbrauch) * self.price_grid)
+
 
 
 
@@ -175,17 +171,13 @@ class cla_Plotting():
         plt.savefig("./Bilder/"+str_toSave+"", bbox_inches = 'tight',pad_inches = 0.08)
         
     def Break_Even_Plot(self,obj_Costs,str_toSave): 
+        return
         fig, ax = plt.subplots(figsize=(12,8))
         
         
         df_Plot = pd.DataFrame()
-        li_kosten = []
-        li_vergütung = []
-        for i in range(1, obj_Costs.Life + 2):
-            li_kosten.append(obj_Costs.Investment_costs + obj_Costs.Operation_costs * i)
-            li_vergütung.append(obj_Costs.cashflow * i)
-        df_Plot["Kosten"] = li_kosten
-        df_Plot["Vergütung"] = li_vergütung
+        df_Plot["Kosten"] = obj_Costs.LifeCosts
+        df_Plot["Vergütung"] = obj_Costs.LifeRevenue
         df_Plot["Cashflow"] = df_Plot["Kosten"] - df_Plot["Vergütung"]
         
         sns.lineplot(data = df_Plot, ax = ax, palette = ["red","green","blue"], linewidth = 2,marker='o')
@@ -291,10 +283,6 @@ class Model():
         if abs(Test) > 0.0000001:
             raise ValueError("ENERGIEBILANZ STIMMT NICHT!")
 
-
-        # calculate cost [€/life cycle]
-        obj_Costs = cla_Costs(obj_Datatracker,price_grid)
-
         # plot your results:
         if plotting == True:
 
@@ -304,7 +292,7 @@ class Model():
             obj_Plotter.Lineplot_Leistung(li_toPLot = ["Batteriekapazität"],str_toSave = "Bat_Kapazität")
             obj_Plotter.Lineplot_Leistung(li_toPLot = ["PV_Direktverbrauch"],str_toSave = "PV_Direktverbrauch")
             obj_Plotter.Lineplot_Leistung(li_toPLot = ["Netzeinspeisung","Netzbezug"],str_toSave = "Netz_IO")
-            obj_Plotter.Break_Even_Plot(obj_Costs, "Cashflow")
+
 
         # calc Primary Energy
         obj_Gebäude.Prim_Gesamt = (sum(obj_Datatracker.Netzbezug) * obj_Gebäude.Prim_Factor - sum(obj_Datatracker.Netzeinspeisung)) / obj_Gebäude.BGF
@@ -312,8 +300,12 @@ class Model():
         # calc CO2 
         obj_Gebäude.CO2_Gesamt = ((sum(obj_Datatracker.Netzbezug) * obj_Gebäude.CO2 - sum(obj_Datatracker.Netzeinspeisung) * obj_Gebäude.CO2) / 1000) / obj_Gebäude.BGF
 
+        # calculate cost [€/life cycle]
+        obj_Costs = cla_Costs(obj_Datatracker,price_grid)
+        #obj_Plotter.Break_Even_Plot(obj_Costs,str_toSave = "Cashflow")
+        # investment cost [€/life cycle]
     
-
+        # operational cost [€/life cycle]
         result = {
             "Gesamtkosten" : obj_Costs.total_costs,
             "Investmentkosten" : obj_Costs.Investment_costs,
@@ -342,10 +334,10 @@ class Model():
 def main():
     #this should work
     model = Model()
-    result = model.Simulate(var_BGF=200, var_PV_kWP = 100, var_battery_kWh = 15, verbose = False, plotting = True)
+    result = model.Simulate(var_BGF=1000, var_PV_kWP = 50, var_battery_kWh = 50, verbose = False, plotting = True)
     print(f"Gesamtkosten: {result['Gesamtkosten']:.2f} €")
     print(f"Investmentkosten: {result['Investmentkosten']:.2f} €")
-    print(f"Operationskosten: {result['Operationskosten']:.2f} €")
+    print(f"Operationskosten: {result['Operationskosten']:.2f}")
     print(f"Emissionen: {result['Emissionen']:.2f} kgCO2/m²a")
     print(f"Primärenergie: {result['Primärenergie']:.2f} kWh/m²a")
     print(f"Netzeinspeisung: {result['Netzeinspeisung']:.2f} kWh")
