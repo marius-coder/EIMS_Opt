@@ -196,7 +196,7 @@ class cla_Plotting():
         plt.savefig("./Bilder/"+str_toSave+"", bbox_inches = 'tight',pad_inches = 0.08)
 
         
-    def Sankeyplot(self,obj_Datatracker):
+    def Sankeyplot(self,obj_Datatracker :cla_Data_Tracking):
         fig, ax = plt.subplots(figsize=(10,12))
         flows_Batterie = [obj_Datatracker.Batterieentladung.sum(),obj_Datatracker.Batterieeinspeisung.sum()*-1,obj_Datatracker.Batterieverluste.sum()*-1]
         flows_Gebäude = [obj_Datatracker.Batterieeinspeisung.sum(),obj_Datatracker.Batterieentladung.sum()*-1,
@@ -214,13 +214,13 @@ class cla_Plotting():
                 
         sankey = Sankey(ax=ax, scale=0.8, unit = "kWh")
         sankey.add(flows=flows_Gebäude, label=labels_Gebäude, edgecolor = '#000000', facecolor = 'lightgrey',
-           orientations=orientation_Gebäude, trunklength = 5000, pathlengths = [2500,1000,1000,1000,1000,1000])
+           orientations=orientation_Gebäude, trunklength = 1000, pathlengths = [2500,1000,1000,1000,1000,1000])
         
         sankey.add(flows=flows_Batterie, label=labels_Batterie,edgecolor = '#000000', facecolor = 'lightblue',
-           orientations=orientation_Batterie, trunklength = 5000, pathlengths = 500,prior=0,connect=(1, 0))
+           orientations=orientation_Batterie, trunklength = 1000, pathlengths = 500,prior=0,connect=(1, 0))
         
         sankey.add(flows=flows_Netz, label=labels_Netz,edgecolor = '#000000', facecolor = 'khaki',
-           orientations=orientation_Netz, trunklength = 5000, pathlengths = 500,prior=0,connect=(4, 0))
+           orientations=orientation_Netz, trunklength = 1000, pathlengths = 500,prior=0,connect=(4, 0))
     
         sankey.finish()
             
@@ -288,8 +288,8 @@ class Model():
         flows_out = [obj_Datatracker.Netzeinspeisung.sum(),obj_Datatracker.Batterieeinspeisung.sum(), 
                             obj_Datatracker.Batterieverluste.sum(),obj_Datatracker.Gebäudeverbrauch.sum()]
         Test = sum(flows_in) - sum(flows_out)
-        if abs(Test) > 0.0000001:
-            raise ValueError("ENERGIEBILANZ STIMMT NICHT!")
+        #if abs(Test) > 0.0000001:
+         #   raise ValueError("ENERGIEBILANZ STIMMT NICHT!")
 
 
         # calculate cost [€/life cycle]
@@ -345,7 +345,7 @@ def main():
     #result = model.Simulate(var_BGF=200, var_PV_kWP = 0, var_battery_kWh = 0, verbose = False, plotting = True)
     #result = model.Simulate(var_BGF=200, var_PV_kWP = 10, var_battery_kWh = 0, verbose = False, plotting = True)
     #result = model.Simulate(var_BGF=200, var_PV_kWP = 0, var_battery_kWh = 10, verbose = False, plotting = True)
-    result = model.Simulate(var_BGF=100, var_PV_kWP = 5, var_battery_kWh = 7.5, verbose = False, plotting = True)
+    result = model.Simulate(var_BGF=100, var_PV_kWP = 10, var_battery_kWh = 5, verbose = False, plotting = True)
     
 
     print(f"Gesamtkosten: {result['Gesamtkosten']:.2f} €")
