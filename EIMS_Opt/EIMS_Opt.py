@@ -342,7 +342,12 @@ class Model():
 def main():
     #this should work
     model = Model()
-    result = model.Simulate(var_BGF=200, var_PV_kWP = 100, var_battery_kWh = 15, verbose = False, plotting = True)
+    #result = model.Simulate(var_BGF=200, var_PV_kWP = 0, var_battery_kWh = 0, verbose = False, plotting = True)
+    #result = model.Simulate(var_BGF=200, var_PV_kWP = 10, var_battery_kWh = 0, verbose = False, plotting = True)
+    #result = model.Simulate(var_BGF=200, var_PV_kWP = 0, var_battery_kWh = 10, verbose = False, plotting = True)
+    result = model.Simulate(var_BGF=100, var_PV_kWP = 5, var_battery_kWh = 7.5, verbose = False, plotting = True)
+    
+
     print(f"Gesamtkosten: {result['Gesamtkosten']:.2f} €")
     print(f"Investmentkosten: {result['Investmentkosten']:.2f} €")
     print(f"Operationskosten: {result['Operationskosten']:.2f} €")
@@ -350,6 +355,7 @@ def main():
     print(f"Primärenergie: {result['Primärenergie']:.2f} kWh/m²a")
     print(f"Netzeinspeisung: {result['Netzeinspeisung']:.2f} kWh")
     print(f"Netzbezug: {result['Netzbezug']:.2f} kWh")
+    
 
 if __name__ == "__main__":  # https://www.youtube.com/watch?v=sugvnHA7ElY
     main() 
